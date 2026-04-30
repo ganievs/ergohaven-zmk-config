@@ -1,0 +1,192 @@
+/*
+ * Velvet v3 UI - ZSA Voyager-style keymap (ZMK port)
+ *
+ * Translated from the QMK keymap on the ZSA Voyager (file: zsa_voyager_DwR0b).
+ * Faithful port: same QWERTY base, same home-row mods on the left (LCTL/LALT/LGUI/LSFT
+ * on A/S/D/F), same thumb behaviors (LT(1,SPACE) / MT(LGUI,ESC) | MT(RGUI,BSPC)
+ * / LT(2,ENTER)), same number/symbol layer, same nav/mouse/RGB layer.
+ *
+ * Layout differences vs. Voyager:
+ *  - Voyager has 4 main rows + 2 thumbs/side; Velvet UI has 3 main rows + 5
+ *    thumbs/side. Voyager row 0 (numbers, F-keys) lives on the sym/nav layers
+ *    just like in your existing velvet config. Extra thumb slots are filled
+ *    with LCTRL/LSHFT/LALT and the right-side bracket/delete keys that lived
+ *    on Voyager's top corners.
+ *  - QMK-only features (RGB modes, HSV macros, layer-color toggles) are not
+ *    directly portable to the Velvet UI shield. Equivalent slots are left as
+ *    bootloader / output toggles / BLE controls — same idea as your existing
+ *    "adj" layer.
+ */
+
+#include <behaviors.dtsi>
+#include <dt-bindings/zmk/bt.h>
+#include <dt-bindings/zmk/keys.h>
+#include <dt-bindings/zmk/outputs.h>
+#include <dt-bindings/zmk/pointing.h>
+
+/ {
+    behaviors {
+        /*
+         * QMK DUAL_FUNC_0 was tap=`=`, hold=`ESC`. Both sides are plain keys
+         * (no modifier on hold), so we need a generic hold-tap, not &mt.
+         */
+
+        esc_eql: esc_eql {
+            compatible = "zmk,behavior-hold-tap";
+            label = "ESC_EQL";
+            bindings = <&kp>, <&kp>;
+
+            #binding-cells = <2>;
+            tapping-term-ms = <200>;
+            quick-tap-ms = <150>;
+            flavor = "tap-preferred";
+        };
+
+        /*
+         * QMK MT(MOD_xxx, KC_y) — left-hand home row mods on A/S/D/F.
+         * tap-preferred + require-prior-idle keeps fast typing from
+         * accidentally firing the modifier.
+         */
+
+        hrm: hrm {
+            compatible = "zmk,behavior-hold-tap";
+            label = "HOME_ROW_MOD";
+            bindings = <&kp>, <&kp>;
+
+            #binding-cells = <2>;
+            tapping-term-ms = <200>;
+            quick-tap-ms = <150>;
+            require-prior-idle-ms = <125>;
+            flavor = "tap-preferred";
+        };
+
+        /*
+         * QMK TD(DANCE_0): single tap = ', double tap = jump to layer 3.
+         * (The `register quote` on triple-tap edge case from QMK is dropped;
+         * normal typing of multiple quotes still works fine.)
+         */
+
+        quote_td: quote_td {
+            compatible = "zmk,behavior-tap-dance";
+            label = "QUOTE_TD";
+            #binding-cells = <0>;
+            tapping-term-ms = <200>;
+            bindings = <&kp SQT>, <&to 3>;
+        };
+    };
+
+    keymap {
+        compatible = "zmk,keymap";
+
+        /*
+         *  ZSA Voyager base layer translated to Velvet UI:
+         *
+         *  ┌───────┬──────────┬──────────┬──────────┬───────────┬─────┐    ┌─────┬───┬───┬───┬─────┬───────┐
+         *  │  TAB  │    Q     │    W     │    E     │     R     │  T  │    │  Y  │ U │ I │ O │  P  │   [   │
+         *  ├───────┼──────────┼──────────┼──────────┼───────────┼─────┤    ├─────┼───┼───┼───┼─────┼───────┤
+         *  │ LSHFT │ A(LCTRL) │ S(LALT)  │ D(LGUI)  │ F(LSHFT)  │  G  │    │  H  │ J │ K │ L │  ;  │ ' /L3 │
+         *  ├───────┼──────────┼──────────┼──────────┼───────────┼─────┤    ├─────┼───┼───┼───┼─────┼───────┤
+         *  │ LCTRL │    Z     │    X     │    C     │     V     │  B  │    │  N  │ M │ , │ . │ /(R)│ RCTRL │
+         *  └───────┴──────────┴──────────┴──────────┴───────────┴─────┘    └─────┴───┴───┴───┴─────┴───────┘
+         *                       LALT  LSHFT  LCTRL  ESC(LGUI)  SPC(L1)  │ BSPC(RGUI)  RET(L2)  DEL  [   ]
+         */
+
+        base {
+            bindings = <
+&kp TAB    &kp Q         &kp W        &kp E        &kp R         &kp T                                       &kp Y      &kp U  &kp I      &kp O     &kp P          &kp LBKT
+&kp LSHFT  &hrm LCTRL A  &hrm LALT S  &hrm LGUI D  &hrm LSHFT F  &kp G                                       &kp H      &kp J  &kp K      &kp L     &kp SEMI       &quote_td
+&kp LCTRL  &kp Z         &kp X        &kp C        &kp V         &kp B                                       &kp N      &kp M  &kp COMMA  &kp DOT   &mt RALT FSLH  &kp RCTRL
+                         &kp LALT     &kp LSHFT    &kp LCTRL     &mt LGUI ESC  &lt 1 SPACE    &mt RGUI BSPC  &lt 2 RET  &none  &kp LBKT   &kp RBKT
+            >;
+
+            display-name = "Base";
+        };
+
+        /*
+         * Voyager Layer 1 (numbers / symbols / F-keys), folded onto Velvet's
+         * 3-row layout. Voyager row 0 (ESC F1..F11) goes on top, row 1 (numpad
+         * + symbols) in the middle, row 2 (more symbols) on the bottom. Layer
+         * 1 is reached by holding the inner-left thumb (SPACE on tap).
+         */
+
+        sym {
+            bindings = <
+&kp ESC    &kp F1     &kp F2    &kp F3    &kp F4    &kp F5                           &kp F6  &kp F7  &kp F8  &kp F9     &kp F10    &kp F11
+&kp GRAVE  &kp EXCL   &kp AT    &kp HASH  &kp DLLR  &kp PRCNT                        &kp N7  &kp N8  &kp N9  &kp MINUS  &kp FSLH   &kp F12
+&kp TILDE  &kp CARET  &kp AMPS  &kp STAR  &kp LPAR  &kp RPAR                         &kp N4  &kp N5  &kp N6  &kp PLUS   &kp ASTRK  &kp BSPC
+                      &kp BSLH  &trans    &kp LBKT  &kp RBKT   &kp LBRC    &kp RBRC  &kp N0  &kp N1  &kp N2  &kp N3
+            >;
+
+            display-name = "Sym";
+        };
+
+        /*
+         * Voyager Layer 2 (nav / arrows / media / mouse). Mouse pointer moves
+         * use ZMK's &mmv (mouse move). Mouse buttons use &mkp.
+         * Reached by holding the inner-right thumb (ENTER on tap).
+         */
+
+        nav {
+            bindings = <
+&bootloader  &trans  &kp C_VOL_DN  &kp C_VOL_UP  &kp C_MUTE  &trans                             &trans    &trans          &trans          &trans        &trans  &bootloader
+&trans       &trans  &trans        &trans        &trans      &kp LC(TAB)                        &kp HOME  &kp PG_DN       &kp PG_UP       &kp END       &trans  &trans
+&trans       &trans  &trans        &trans        &trans      &kp LC(LS(TAB))                    &kp LEFT  &kp DOWN        &kp UP          &kp RIGHT     &trans  &kp DEL
+                     &mkp LCLK     &mkp RCLK     &trans      &trans           &trans    &trans  &trans    &mmv MOVE_LEFT  &mmv MOVE_DOWN  &mmv MOVE_UP
+            >;
+
+            display-name = "Nav";
+        };
+
+        /*
+         * Voyager Layer 3 was the "tap-dance practice / lock" layer (entered
+         * via double-tap of the quote key). Almost everything is transparent
+         * in QMK, so we mirror that here. The inner thumbs give back SPACE
+         * and LCTRL like the original did. Hit `&to 0` (over W in QMK; we put
+         * it on Q here) to return to base.
+         */
+
+        user0 {
+            bindings = <
+&trans  &to 0   &trans  &trans  &trans  &trans                          &trans  &trans  &trans  &trans  &trans  &trans
+&trans  &trans  &trans  &trans  &trans  &trans                          &trans  &trans  &trans  &trans  &trans  &trans
+&trans  &trans  &trans  &trans  &trans  &trans                          &trans  &trans  &trans  &trans  &trans  &trans
+                &trans  &trans  &trans  &kp LCTRL  &kp SPACE    &trans  &trans  &trans  &trans  &trans
+            >;
+
+            display-name = "User0";
+        };
+
+        /*
+         * The Velvet UI shield expects 5 layers in the keymap (base + sym +
+         * nav + user0 + adj) for cleanly compatible builds with the rest of
+         * the repo. `adj` (BLE / output / studio unlock) is reached the
+         * traditional ZMK way: hold both lt thumbs at once. Optional but
+         * convenient — comment it out if you'd rather match Voyager 1:1.
+         */
+
+        adj {
+            bindings = <
+&bootloader  &none  &kp F1  &kp F2   &kp F3   &kp F4                   &bt BT_SEL 0  &bt BT_SEL 1  &bt BT_SEL 2      &bt BT_SEL 3  &bt BT_SEL 4  &bt BT_CLR
+&none        &none  &kp F5  &kp F6   &kp F7   &kp F8                   &out OUT_BLE  &kp C_VOL_DN  &kp C_MUTE        &kp C_VOL_UP  &none         &studio_unlock
+&none        &none  &kp F9  &kp F10  &kp F11  &kp F12                  &out OUT_USB  &kp C_PREV    &kp C_PLAY_PAUSE  &kp C_NEXT    &none         &none
+                    &none   &none    &none    &none    &none    &none  &none         &none         &none             &none
+            >;
+
+            display-name = "Adj";
+        };
+    };
+
+    /* Combos: hold both inner-thumb LT keys to reach the adj layer */
+
+    combos {
+        compatible = "zmk,combos";
+
+        adj_combo {
+            bindings = <&mo 4>;
+            key-positions = <40 42>;  /* lt 1 SPACE + lt 2 RET — both layer-tap thumbs held together */
+            timeout-ms = <50>;
+            layers = <0>;
+        };
+    };
+};
+
